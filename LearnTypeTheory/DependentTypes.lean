@@ -1,36 +1,39 @@
 import Mathlib.Tactic
 open Classical
 -- Defining Types from Scratch using only Pi types (no inductive types except for the info view)
-
 universe u
-
 
 -- BOOLEANS AS PI TYPE
 def Bool_ :=  Π (α : Type u), α → α → α
-
 -- Display Bool_ using normal Bool
 instance : Repr Bool_ where
   reprPrec t _ := Repr.reprPrec (t Bool true false) 0
 
+def T : Bool_ := λ (α : Type u) (a: α ) (b:α ) => a
+def F : Bool_ := λ (α : Type u) (a: α ) (b:α ) => b
+
 -- When condition is T, returns a, otherwise b
-def elseIf  (condition: Bool_) : Bool_ := λ  (α : Type u) (a b: α )  =>  (condition α a) b
+-- Note, we don't have to use Lean's built-in if else statement since the logic is expressed by the combinators.
+def ifElse  (condition: Bool_) : Bool_ := λ  (α : Type u) (a b: α )  =>  condition α a b
 
 def and (p q: Bool_) : Bool_ :=
-  elseIf p Bool_ (elseIf q Bool_ T F) F
+  ifElse p Bool_ (ifElse q Bool_ T F) F
 -- "and" Truth table
-#eval and T T
-#eval and F T
-#eval and T F
-#eval and F F
+#eval and T T -- true
+#eval and F T -- false
+#eval and T F -- false
+#eval and F F -- false
 
-def not (p: Bool_) : Bool_ := elseIf p Bool_ F T
+
+def not (p: Bool_) : Bool_ := ifElse p Bool_ F T
 -- "not" truth table
-#eval not T
-#eval not F
+#eval not T -- false
+#eval not F -- true
 
 
--- This example shows that in Lean's type system we can't actually assume parametricity since we can use the structure of the type α to define the function's behaiviour.
-noncomputable def counter_example_to_parametricity : Bool_ :=
+-- This example shows that in Lean's type system with Classical axioms violates parametricity since we can use the structure of the type α to define the function's behaiviour. However, without Classical axioms we don't have universal deciable equality for types so we can't case split on the unknown type α. Therefore, in the constructive fragment of Lean's type system, parametricity holds. However, proving this inside Lean is another issue.
+-- See: https://cs.stackexchange.com/questions/169987/are-dependent-functions-and-pairs-in-lean-parametrically-polymorphic
+noncomputable  def counter_example_to_parametricity : Bool_ :=
   λ (α : Type) (a : α) (b : α) =>
     if α = Bool then  a  -- If α is Bool, behave like T
     else b
@@ -48,8 +51,7 @@ def boolEquiv : Bool_ ≃ Bool := {
     funext α a b
     by_cases h: x Bool true false = true
     · simp_all
-      -- Can't prove it without paramatricity axiom?
-      -- This demonstrates why we need inductive types
+      -- I can't figure out how to prove it, might not be provable internally?
       sorry -- case pos
     · simp_all
       sorry -- case neg
