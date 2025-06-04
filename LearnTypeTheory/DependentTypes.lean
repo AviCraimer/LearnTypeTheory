@@ -1,15 +1,18 @@
 import Mathlib.Tactic
-
+open Classical
 -- Defining Types from Scratch using only Pi types (no inductive types except for the info view)
 
 universe u
-@[simp]
 
 
+-- BOOLEANS AS PI TYPE
 def Bool_ :=  Π (α : Type u), α → α → α
 
 def T : Bool_ := λ (α : Type u) (a: α ) (b:α ) => a
 def F : Bool_ := λ (α : Type u) (a: α ) (b:α ) => b
+
+
+
 
 instance : Repr Bool_ where
   reprPrec t _ := Repr.reprPrec (t Bool true false) 0
@@ -30,6 +33,43 @@ def not (p: Bool_) : Bool_ := elseIf p Bool_ F T
 #eval not T
 #eval not F
 
+
+-- This example shows that in Lean's type system we can't actually assume parametricity since we can use the structure of the type α to define the function's behaiviour.
+noncomputable def counter_example_to_parametricity : Bool_ :=
+  λ (α : Type) (a : α) (b : α) =>
+    if α = Bool then  a  -- If α is Bool, behave like T
+    else b
+
+-- This is false in Lean, but it would be true if Bool_ was parametric.
+def boolEquiv : Bool_ ≃ Bool := {
+  toFun (b: Bool_) : Bool :=  b Bool true false
+  invFun (b: Bool):=
+    if b = true
+    then fun (α : Type)(t: α )(f:α ) => t
+    else fun (α : Type) (t: α )(f:α ) => f
+  left_inv := by
+    intro x
+    simp
+    funext α a b
+    by_cases h: x Bool true false = true
+    · simp_all
+      -- Can't prove it without paramatricity axiom?
+      -- This demonstrates why we need inductive types
+      sorry -- case pos
+    · simp_all
+      sorry -- case neg
+  right_inv := by
+    -- No problem proving it the other direction (from Bool to Bool_)
+    intro b
+    simp_all
+    by_cases h: b = true
+    · subst h
+      simp_all only [↓reduceIte]
+    · simp_all only [Bool.not_eq_true, Bool.false_eq_true, ↓reduceIte]
+}
+
+
+-- NATURAL NUMBERS AS PI TYPE
 
 def Nat_ :=  Π (α : Type), α → (α → α) → α
 
@@ -91,28 +131,8 @@ Beta reduction:
 -/
 
 
--- We can't prove meta-theorems about syntactic forms of Lean's own lambda expressions.
 
-def boolEquiv : Bool_ ≃ Bool := {
-  toFun (b: Bool_) : Bool :=  b Bool true false
-  invFun (b: Bool):=
-    if b = true
-    then fun (α : Type)(t: α )(f:α ) => t
-    else fun (α : Type) (t: α )(f:α ) => f
-  left_inv := by
-    intro x
-    simp
-    funext α tru
-    by_cases h: x Bool true false = true
-    · simp_all
-      funext fls
-      -- Can't prove it without paramatricity axiom.
-      -- This demonstrates why we need inductive types
-      sorry
-    · simp_all
-      sorry
-  right_inv := sorry
-}
+
 
 
 def nat_iso_nat :   Nat_ ≃ Nat := by sorry
