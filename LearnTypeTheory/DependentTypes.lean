@@ -8,12 +8,7 @@ universe u
 -- BOOLEANS AS PI TYPE
 def Bool_ :=  Π (α : Type u), α → α → α
 
-def T : Bool_ := λ (α : Type u) (a: α ) (b:α ) => a
-def F : Bool_ := λ (α : Type u) (a: α ) (b:α ) => b
-
-
-
-
+-- Display Bool_ using normal Bool
 instance : Repr Bool_ where
   reprPrec t _ := Repr.reprPrec (t Bool true false) 0
 
@@ -73,6 +68,7 @@ def boolEquiv : Bool_ ≃ Bool := {
 
 def Nat_ :=  Π (α : Type), α → (α → α) → α
 
+-- Display Nat_ using normal Nat
 instance : Repr Nat_ where
   reprPrec n _ := Repr.reprPrec (n Nat Nat.zero Nat.succ ) 0
 
