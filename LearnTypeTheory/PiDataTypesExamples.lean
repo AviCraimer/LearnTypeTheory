@@ -3,8 +3,15 @@ open Classical
 -- Defining Types from Scratch using only Pi types (no inductive types except for the info view)
 universe u
 
+
+inductive MyBool : Type where
+  | false : MyBool
+  | true : MyBool
+
 -- BOOLEANS AS PI TYPE
 def Bool_ :=  Π (α : Type u), α → α → α
+
+
 -- Display Bool_ using normal Bool
 instance : Repr Bool_ where
   reprPrec t _ := Repr.reprPrec (t Bool true false) 0
@@ -68,6 +75,13 @@ def boolEquiv : Bool_ ≃ Bool := {
 
 -- NATURAL NUMBERS AS PI TYPE
 
+
+inductive MyNat where
+| zero
+| succ (n:MyNat) : MyNat
+deriving Repr
+
+
 def Nat_ :=  Π (α : Type), α → (α → α) → α
 
 -- Display Nat_ using normal Nat
@@ -90,6 +104,7 @@ def n3 : Nat_ :=
 
 def succ_ (n : Nat_) : Nat_ :=
   λ α z s => s (n α z s)
+
 
 #eval succ_ n3
 
@@ -115,17 +130,18 @@ See inside what's happening with mul n2 n3
 
 def n2 : Nat_ := λ (α : Type) (zero: α ) (succ: α → α ) => succ (succ zero)
 
-def n3 : Nat_ :=
+def m3 : Nat_ :=
   λ (α : Type) (zero: α ) (succ: α → α ) => succ (succ (succ zero))
 
 def twoTimesThree :=  mul n2 m3
 
 Beta reduction:
-    n2 α zero (λ (x:α) => n3 α x succ) ((λ (x:α) => n3 α x succ) zero)
-    n2 α zero (λ (x:α) => n3 α x succ) (n3 α zero succ)
-    n2 α zero (λ (x:α) => n3 α x succ) (succ (succ (succ zero)))
-    n2 α zero (n3 α (succ (succ (succ zero))) succ)
-    n2 α zero succ (succ (succ (succ (succ (succ zero)))))
+    n2 α zero (λ (x:α) => m3 α x succ)
+    n2 α zero (λ (x:α) => succ (succ (succ zero)))
+    (λ (x:α) => succ (succ (succ x))) ((λ (x:α) => succ (succ (succ x))) zero)
+    (λ (x:α) => succ (succ (succ x))) ( succ (succ (succ zero)) )
+    (succ (succ (succ ( succ (succ (succ zero)) ))))
+
 -/
 
 
