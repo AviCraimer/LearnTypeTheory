@@ -1,4 +1,5 @@
 import Mathlib.Tactic
+
 universe u v
 -- We lift propositions to Type to avoid Lean's built-in proof irrelevance for propositions. This is only for demonstration purposes to show how Sigma types work.
 inductive LiftProp (p : Prop) : Type where
@@ -117,3 +118,9 @@ def cardstockAsQh : CardboardAsQueen := ⟨cardstockIsCardboard, qhIsQueenOfHear
 #eval cardstockAsQh.2.1.2 -- as hearts
 #eval cardstockAsQh.2.1.1.1 -- Raw card
 #eval cardstockAsQh.2.1.2.1 = cardstockAsQh.2.1.1.1 -- raw cards are the same
+
+
+
+
+
+---

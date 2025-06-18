@@ -16,7 +16,11 @@ match t with
 | Ω => Bool
 | arrow dom cod => dom.toType α  → cod.toType α
 
+
 open SimpleType
+namespace SimpleType
+infixr:200   " ⟶ " => arrow
+end SimpleType
 
 structure  STLambdaTerm.Variable where
 name: String
@@ -27,7 +31,6 @@ open STLambdaTerm
 inductive STLambdaTerm : SimpleType → Type where
 | varTerm (v: Variable) : STLambdaTerm v.type
 | abstraction  {cod: SimpleType} (x: Variable) (body:  STLambdaTerm cod) : STLambdaTerm (arrow  x.type cod)
-
 | application {dom cod: SimpleType}  (func: STLambdaTerm (arrow dom cod)) (argument: STLambdaTerm dom) : STLambdaTerm cod
 deriving  Repr
 
