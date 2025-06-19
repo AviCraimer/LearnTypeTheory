@@ -14,7 +14,7 @@ inductive Deontic
 | must
 | mustNot
 deriving Repr
-
+open Deontic
 
 
 -- We similify by making the deontic mandatory, however since the values of Deontic include "may" we can still express situations without deontic constraints.
@@ -30,6 +30,8 @@ structure Event (People Action Situation: Type) where
   action: Action
   situation: Situation
 
+
+
 -- Statement is applicable to the event
 def nADICData.isSatisfied {People Action Situation: Type } (data: nADICData People Action Situation) (e: Event People Action Situation ) : Prop :=
   data.A e.person ∧ data.I e.action ∧ data.C e.situation
@@ -37,7 +39,7 @@ def nADICData.isSatisfied {People Action Situation: Type } (data: nADICData Peop
 inductive nADICO (People Action Situation: Type )
 -- Base case to wrap the nADIC data
 | SIMPLE (S1: nADICData People Action Situation )
-
+| EVENT (e: Event People Action Situation)
 -- Attach statements together with OrElse
 | ORELSE (monitored consequence: nADICO People Action Situation )
 
@@ -61,6 +63,7 @@ infixr:70 "XOR" => BoolXOR
 def nADICO.isSatisfied {People Action Situation: Type} (n: nADICO People Action Situation )    (e: Event People Action Situation) :=
     match n with
     | SIMPLE data => data.isSatisfied e
+    | EVENT e' => e = e'
     | n1 & n2 => n1.isSatisfied e ∧ n2.isSatisfied e
     | n1 OR n2 => n1.isSatisfied e ∨  n2.isSatisfied e
     | n1 XOR n2 => ¬ ((n1.isSatisfied e) ↔ (n2.isSatisfied e))
@@ -75,6 +78,7 @@ def nADICO.isFollowed {People Action Situation: Type} (n: nADICO People Action S
       | .may => True
       | .must => data.isSatisfied e
       | .mustNot => ¬ data.isSatisfied e
+    | EVENT e' => (EVENT e').isSatisfied e
     | n1 &  n2 => n1.isFollowed e ∧ n2.isFollowed e
     | n1 OR n2 => n1.isFollowed e ∨  n2.isFollowed e
     | n1 XOR n2 => ¬ ((n1.isFollowed e) ↔ (n2.isFollowed e))
@@ -103,12 +107,97 @@ lemma nADICO.equiv_followed_imp_equiv_violated {People Action Situation: Type}  
   have h1 := h e
   simp_all only
 
+
+
+
+@[simp]
+def nADICO.isSimple  {People Action Situation: Type}  (n1: nADICO People Action Situation)  :=
+  ∃ (x: nADICData People Action Situation), n1 =  SIMPLE x
+
+@[simp]
+def nADICO.hasDeontic   {People Action Situation: Type}  (n1: nADICO People Action Situation) (deontic: Deontic)  :=
+  ∃ (x: nADICData People Action Situation), x.D = deontic ∧  n1 = SIMPLE x
+
+-- lemma must_imp_must {People Action Situation: Type}  (n1 n2: nADICO People Action Situation) (hEquiv: n1.equivFollowed n2) (h1: n1.hasDeontic must) (h2: n2.isSimple) :   n2.hasDeontic must := by
+--   simp_all
+--   obtain ⟨data1, data1Must, data1Simple ⟩ := h1
+--   obtain ⟨data2, data2Simple  ⟩ := h2
+--   rw [data2Simple]
+--   use data1
+--   constructor
+--   · exact data1Must
+--   · sorry
+
+--   induction n2 with
+--     | SIMPLE data =>
+
+--        have h2 (dataMust : data.D = Deontic.must):  (SIMPLE data).isSatisfied e ↔ n2.isSatisfied e := by
+--         simp_all [nADICO.isSatisfied]
+--         simp [isFollowed] at h_e
+--         rw [dataMust] at h_e
+--         simp at h_e
+
+
+
+
+--     | ORELSE _  _ => sorry
+--     | BoolAND _  _ => sorry
+--     | BoolOR _  _ => sorry
+--     | BoolXOR _  _ => sorry
+
+
+
+-- Informal argument:
+-- s1.equivFollowed s2 where s1 and s2 are simple statements, means that all simple statements with the must deontic are satisfied iff they are followed.
+-- This is is enough to show
+-- lemma nADICO.equiv_followed_imp_equiv_satisfied {People Action Situation: Type}  (n1 n2: nADICO People Action Situation) (h1: n1.isSimple )(h2: n2.isSimple )   (h: n1.equivFollowed n2) : n1.equivSatisfied n2 := by
+--   intro e
+--   have h_e := h e
+--   induction n1 with
+--     | SIMPLE data =>
+
+--        have h2 (dataMust : data.D = Deontic.must):  (SIMPLE data).isSatisfied e ↔ n2.isSatisfied e := by
+--         simp_all [nADICO.isSatisfied]
+--         simp [isFollowed] at h_e
+--         rw [dataMust] at h_e
+--         simp at h_e
+
+
+
+
+--     | ORELSE _  _ => sorry
+--     | BoolAND _  _ => sorry
+--     | BoolOR _  _ => sorry
+--     | BoolXOR _  _ => sorry
+
+--   constructor
+--   · intro eSat
+--     induction n1 with
+--     | SIMPLE data =>
+
+--        have h4: data.D = Deontic.must →
+--     | ORELSE _  _ => sorry
+--     | BoolAND _  _ => sorry
+--     | BoolOR _  _ => sorry
+--     | BoolXOR _  _ => sorry
+
+
+lemma nADICO.equiv_followed_imp_equiv_satisfied {People Action Situation: Type}  (n1 n2: nADICO People Action Situation)  (h: n1.equivFollowed n2) : n1.equivSatisfied n2 := by sorry
+
+
 -- lemma nADICO.equiv_followed_imp_equiv_satisfied {People Action Situation: Type}  (n1 n2: nADICO People Action Situation)  (h: n1.equivFollowed n2) : n1.equivSatisfied n2 := by
 --   intro e
 --   have h_e := h e
 --   constructor
 --   · intro eSat
---     sorry
+--     have h2 := h_e.mp
+--     by_cases h: n1.isFollowed e
+--     · have h3 := h_e.mp h
+
+--     .
+
+
+
 --   · sorry
 
 

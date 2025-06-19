@@ -10,6 +10,8 @@ inductive  BPerson  where
 open BPerson
 
 inductive  BAction where
+| undergoes
+
 -- Farmers
 | overhavest
 | plantDurian
@@ -27,7 +29,8 @@ inductive  BSituation where
 | flooding
 | durianYield (percentChange: Float) -- negative unit interval for decrease positive for increase
 | landDegredation
-| increasedIncome
+| changeInIncome (percentChange: Float)
+
 | event (e: Event BPerson BAction BSituation)
 
 open BSituation
@@ -47,13 +50,23 @@ def forrestEvent : BorneoEvent := {
   situation:= everywhereAlways
 }
 
--- If there are decreasing durian yeilds, a farmer may plant palm oil
-def palmOilStrategy : BorneoData := {
+open nADICO
+
+
+
+def palmOilStrategy (yield: Float) : BorneoData := {
   A  := isFarmer,
   I (a: BAction) := a = plantPalmOil,
-  C (s: BSituation) :  Prop := ∃ (f: Float), s = durianYield f  ∧ f ≤ decreasingThreshold
-  D := none  -- It's not a norm, but a strategy
+  C (s: BSituation) :  Prop :=  s = durianYield yield  ∧ yield ≤ decreasingThreshold
+  D := must
 }
+
+-- If there are decreasing durian yeilds a farmer must plant palm oil, or else the farmer undergoes a negative change in income proportional to the decrease in yield.
+def palmOilStatment (yield: Float) (_: yield ≤ decreasingThreshold) : Borneo :=  (SIMPLE (palmOilStrategy yield)) -O (EVENT ({
+  person:= farmer,
+  action:= undergoes,
+  situation:= changeInIncome yield
+}))
 
 
 -- If your neighbor plants palm oil, your land becomes degraded, and you might decide to plant palm oil
