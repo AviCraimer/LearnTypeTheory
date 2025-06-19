@@ -4,74 +4,79 @@ import Mathlib.Tactic
 -- nADICO: A Nested Grammar of Instituations
 -- By Chistopher Frantz, Martin K. Purvis, Mariusz Nowostawski, Bastin Tony Roy Savarimuthu
 
-
--- I model the OrElse as a logical operation rather than a constituent of the data.
-
 inductive Deontic
 | may
 | must
 | mustNot
 
 
+inductive LogicOp (α : Type)  where
+| SIMPLE (S1: α  )
+| AND (S1 S2: α  )
+| OR (S1 S2: α )
+| XOR  (S1 S2: α )
 
+mutual
 
--- We similify by making the deontic mandatory, however since the values of Deontic include "may" we can still express situations without deontic constraints.
-structure nADICData   (People Action Situation: Type )  where
+-- We define DO together to ensure you cannot have O without D.
+structure DO  (People Action Situation: Type )  where
+  D: Deontic
+  O: Option (LogicOp (nADICO People Action Situation))
+
+structure nADICO   (People Action Situation: Type )  where
   A : People -> Prop
   I : Action -> Prop
   C : Situation -> Prop
-  D : Deontic
-
-
-inductive nADICO (People Action Situation: Type )
--- Base case to wrap the nADIC data
-| SIMPLE (S1: nADICData People Action Situation  )
-
--- Attach statements together with OrElse
-| ORELSE (monitored consequence: nADICO People Action Situation )
-
--- Boolean operations
-| AND (S1 S2: nADICO People Action Situation  )
-| OR (S1 S2: nADICO People Action Situation )
-| XOR  (S1 S2: nADICO People Action Situation )
+  DO : Option (DO People Action Situation )
+end
 
 
 
--- Get the first statement at the head of a nested ORELSE statement
-def nADICO.head  {People Action Situation: Type } (S1: nADICO People Action Situation ) : nADICO People Action Situation :=
-  match S1 with
-  | .ORELSE  monitored _  =>  monitored.head
-  | _   => S1
+variable { People Action Situation : Type}
+
+variable (S1 S2 S3 : nADICO People Action Situation )
 
 
+@[simp]
+def isAIC   (s: nADICO People Action Situation) : Prop :=  s.DO = none
 
+-- What Ostrom terms a Shared Strategy
+def AIC (People Action Situation: Type) := { s : nADICO People Action Situation | isAIC  s }
+
+-- What original paper terms "A Norm" but Frantz et al revise this terminology so we'll just call it ADIC
+@[simp]
+def isADIC (n: nADICO People Action Situation) : Prop :=  (∃ (DOVal : DO People Action Situation),  n.DO = some DOVal   ∧  DOVal.O = none)
+
+def ADIC (People Action Situation: Type) := { n : nADICO People Action Situation | isADIC n }
+
+-- What the original paper calls "A Rule" but Frantz et al argue can be a norm or a rule. We call it ADICOFull to distinguish from nADICO which is the type that includes all variants.
+@[simp]
+def isADICOFull  (r: nADICO People Action Situation) : Prop :=
+  (∃ (DOVal : DO People Action Situation),  r.DO = some DOVal  ∧
+    (∃ (s: LogicOp (nADICO People Action Situation)),  DOVal.O = some s))
+
+def ADICOFull (People Action Situation: Type) := { r : nADICO People Action Situation | isADICOFull  r }
 
 -- Starting from a statement S1 which is ADIC, we can form a new statement which nests a statemet S2 under the O field of S1.
-def  nADICO.verticalComposition  { People Action Situation : Type} (S1 : nADICO People Action Situation )(S2 : nADICO People Action Situation ) : nADICO People Action Situation  :=
-  .ORELSE S1 S2
-
-
+def verticalComposition (_: isADIC S1)(nS2 : LogicOp (nADICO People Action Situation)  ) : nADICO People Action Situation :=
+  match S1.DO with
+  | none => by
+    exact S1 -- Returning this satisfies the type checker but it cannot happen since S1 is ADIC and thus has a non-none value for DO.
+  | some DOVal  => {
+    S1 with
+    DO :=  some {D:= DOVal.D,  O:= some nS2}
+  }
 
 structure Event (People Action Situation: Type) where
   person: People
   action: Action
   situation: Situation
 
+@[simp]
+def Event' := Event People Action Situation
+
 -- An event satisfies the three predicates in the AIC
-def nADICO.isSatisfied {People Action Situation: Type} (n: nADICO People Action Situation )    (e: Event People Action Situation) :=
-
-  let inner (n': nADICO People Action Situation ) :=
-    match n' with
-    | SIMPLE data => (data.A e.person ∧ data.I e.action ∧ data.C e.situation )
-    | AND n1 n2 => n1.isSatisfied e ∧ n2.isSatisfied e
-    | OR n1 n2 => n1.isSatisfied e ∨  n2.isSatisfied e
-    | XOR n1 n2 => ¬ ((n1.isSatisfied e) ↔ (n2.isSatisfied e))
-    | ORELSE n1 n2 =>
-        n1.isSatisfied -- This goes up to the head. Do I want this or do I want to check that everything earlier in the chain is satisfied?
-  inner n
-
-
-
+def nADICO.isSatisfied {People Action Situation: Type} (n: nADICO People Action Situation ) (e: Event People Action Situation) := (n.A e.person ∧ n.I e.action ∧ n.C e.situation )
 
 -- A statement is followed if the deontic is upheld in the apprirate way. It is trivially followed if there is no deontic or if the deontic is may.
 def nADICO.isFollowed {People Action Situation: Type} (n: nADICO People Action Situation ) (e: Event People Action Situation) := match n.DO with

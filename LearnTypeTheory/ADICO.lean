@@ -129,15 +129,13 @@ lemma nADICO.equiv_followed_imp_equiv_violated {People Action Situation: Type}  
   have h1 := h e
   simp_all only
 
-lemma nADICO.equiv_followed_imp_equiv_satisfied {People Action Situation: Type}  (n1 n2: nADICO People Action Situation)  (h: n1.equivFollowed n2) : n1.equivSatisfied n2 := by
-  intro e
-  have h_e := h e
-  constructor
-  · intro eSat
-
-
-
-  · sorry
+-- lemma nADICO.equiv_followed_imp_equiv_satisfied {People Action Situation: Type}  (n1 n2: nADICO People Action Situation)  (h: n1.equivFollowed n2) : n1.equivSatisfied n2 := by
+--   intro e
+--   have h_e := h e
+--   constructor
+--   · intro eSat
+--     sorry
+--   · sorry
 
 
 
@@ -162,72 +160,3 @@ lemma nADICO.orelse_and_distrib3 {People Action Situation: Type}  (s1 s2 s3 s4: 
 lemma orelse_assoc  {People Action Situation: Type}  (s1 s2 s3:   nADICO People Action Situation) :
   ((s1 -O s2) -O s3).equivFollowed  (s1 -O (s2 -O s3))  := by
   simp [equivFollowed, isFollowed]
-
-
----
--- Borneo Example
-
-inductive  BPerson  where
-| farmer
-| govWorker
-open BPerson
-
-inductive  BAction where
--- Farmers
-| overhavest
-| plantDurian
-| leaveForrest
-| plantPalmOil
-
--- Gov Workers
-| giveCarbonCredit
-open BAction
-
-inductive  BSituation where
-| everywhereAlways
-| havestSeason
-| drought
-| flooding
-| durianYield (percentChange: Float) -- negative unit interval for decrease positive for increase
-| landDegredation
-| increasedIncome
-| event (e: Event BPerson BAction BSituation)
-
-open BSituation
-open Deontic
-def BorneoData := nADICData BPerson BAction BSituation
-def Borneo := nADICO BPerson BAction BSituation
-def BorneoEvent := Event BPerson BAction BSituation
-
-def decreasingThreshold : Float := -0.2
-
-def isFarmer (p: BPerson) := p = farmer
-def isGovWorker  (p: BPerson) := p = govWorker
-
-def forrestEvent : BorneoEvent := {
-  person:= farmer,
-  action:= leaveForrest,
-  situation:= everywhereAlways
-}
-
--- If there are decreasing durian yeilds, a farmer may plant palm oil
-def palmOilStrategy : BorneoData := {
-  A  := isFarmer,
-  I (a: BAction) := a = plantPalmOil,
-  C (s: BSituation) :  Prop := ∃ (f: Float), s = durianYield f  ∧ f ≤ decreasingThreshold
-  D := none  -- It's not a norm, but a strategy
-}
-
-
--- If your neighbor plants palm oil, your land becomes degraded, and you might decide to plant palm oil
-
--- A gov worker must gives carbon credit for leaving forrest stable.
-def govCarbonCredit : BorneoData := {
-  A  := isGovWorker,
-  I (a: BAction) := a = giveCarbonCredit,
-  C (s: BSituation) :  Prop := s = event forrestEvent
-  D := must
-}
-
-
--- Yeild for given farmer increases if all neighbors are planting durian or leave forrest. (less)
