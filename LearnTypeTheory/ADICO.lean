@@ -56,32 +56,8 @@ infixr:70 "XOR" => BoolXOR
 
 
 
-
-
-
 -- A statement being satisfied by and event e. It is clear enough how to interpret a statemetn being satsified by e, for all by ORELSE statements. For SIMPLE statements, we evaluate the conjunction of the three predicates.  This means that the specified criteria for applicability of the statement have been met. For AND OR and XOR we use standard boolean operations.
-
--- The tricky question is ORELSE.
--- Suppose we have ORELSE chain
-  -- A :=  (S1 -O S2) -O S3
-  -- B := S1 -O (S2 -O S3)
--- Naively, to know if A is satisifed you'd need to check if S1 -O S2 is satisfied. But does this mean that both S1 and S2 must be satisifed. If so, it would break associativity since then B might be satisfied and not A.
--- So we define the head of an ORELSE as the first in the chain. The whole ORELSE statement is satisfied if the head is satified.
--- If we evaluate A this way, we take the head which is (S1 -O S2) and if it is satisfied, and then since it is also ORELSE we must take the head againt to evalutate if S1 is satisfied. If we look at B, we go directly to S1, so the result is the same, which should presever associativity.
-
--- But even determining the head is complicated by composition.
--- Suppose we have
--- ( (S1 -O S2) & (S3 -O S4) ) -O S5
-  -- We could say that ( (S1 -O S2) & (S3 -O S4) ) is the head since it is the head of ORELSE chain starting from the main connective. However, I hope to show there is an isomorphism (S1 -O S2) & (S3 -O S4) ≅ (S1 & S3) -O (S3 & S4) in which case it could make sense to regard the "initial statement" in our original as (S1 & S3)
-
--- Get the first statement at the head of a nested ORELSE statement - As noted this may not enough. I'll leave it for now until I work out the distribution and normal forms.
-def nADICO.head  {People Action Situation: Type } (S1: nADICO People Action Situation ) : nADICO People Action Situation :=
-  match S1 with
-  | .ORELSE  monitored _  =>  monitored.head
-  | _   => S1
-
-
--- An event satisfies the three predicates in the AIC
+-- For ORELSE to check if S1 -O S2 is satisfied, you only need to check if the monitored statement (S1) is satisfied.
 def nADICO.isSatisfied {People Action Situation: Type} (n: nADICO People Action Situation )    (e: Event People Action Situation) :=
     match n with
     | SIMPLE data => data.isSatisfied e
@@ -89,8 +65,6 @@ def nADICO.isSatisfied {People Action Situation: Type} (n: nADICO People Action 
     | n1 OR n2 => n1.isSatisfied e ∨  n2.isSatisfied e
     | n1 XOR n2 => ¬ ((n1.isSatisfied e) ↔ (n2.isSatisfied e))
     | monitored -O _ => monitored.isSatisfied e
-
-
 
 -- A statement is followed if the deontic is upheld in the apprirate way. It is trivially followed if there is no deontic or if the deontic is may.
 def nADICO.isFollowed {People Action Situation: Type} (n: nADICO People Action Situation ) (e: Event People Action Situation) :=
