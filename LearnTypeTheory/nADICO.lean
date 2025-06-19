@@ -13,12 +13,12 @@ inductive Deontic
 | may
 | must
 | mustNot
-
+deriving Repr
 
 
 
 -- We similify by making the deontic mandatory, however since the values of Deontic include "may" we can still express situations without deontic constraints.
-structure nADICData   (People Action Situation: Type )  where
+structure nADICData (People Action Situation: Type )  where
   A : People -> Prop
   I : Action -> Prop
   C : Situation -> Prop
@@ -30,11 +30,13 @@ structure Event (People Action Situation: Type) where
   action: Action
   situation: Situation
 
-def nADICData.isSatisfied {People Action Situation: Type } (data: nADICData People Action Situation) (e: Event People Action Situation ) : Prop :=  data.A e.person ∧ data.I e.action ∧ data.C e.situation
+-- Statement is applicable to the event
+def nADICData.isSatisfied {People Action Situation: Type } (data: nADICData People Action Situation) (e: Event People Action Situation ) : Prop :=
+  data.A e.person ∧ data.I e.action ∧ data.C e.situation
 
 inductive nADICO (People Action Situation: Type )
 -- Base case to wrap the nADIC data
-| SIMPLE (S1: nADICData People Action Situation  )
+| SIMPLE (S1: nADICData People Action Situation )
 
 -- Attach statements together with OrElse
 | ORELSE (monitored consequence: nADICO People Action Situation )
@@ -42,11 +44,9 @@ inductive nADICO (People Action Situation: Type )
 -- Boolean operations
 | BoolAND (S1 S2: nADICO People Action Situation  )
 | BoolOR (S1 S2: nADICO People Action Situation )
-| BoolXOR  (S1 S2: nADICO People Action Situation )
+| BoolXOR (S1 S2: nADICO People Action Situation )
 
 open nADICO
-
-
 
 -- We use the "O" lollypop for the relaton of a statement S1 to it's ORELSE clause S2, i.e.
 infixr:60 "-O" =>  ORELSE
@@ -84,7 +84,7 @@ def nADICO.head  {People Action Situation: Type } (S1: nADICO People Action Situ
 -- An event satisfies the three predicates in the AIC
 def nADICO.isSatisfied {People Action Situation: Type} (n: nADICO People Action Situation )    (e: Event People Action Situation) :=
     match n with
-    | SIMPLE data => (data.A e.person ∧ data.I e.action ∧ data.C e.situation )
+    | SIMPLE data => data.isSatisfied e
     | n1 & n2 => n1.isSatisfied e ∧ n2.isSatisfied e
     | n1 OR n2 => n1.isSatisfied e ∨  n2.isSatisfied e
     | n1 XOR n2 => ¬ ((n1.isSatisfied e) ↔ (n2.isSatisfied e))
@@ -108,16 +108,19 @@ def nADICO.isFollowed {People Action Situation: Type} (n: nADICO People Action S
 
 
 @[simp] -- A statement is violated if it is not followed.
-def nADICO.isViolated {People Action Situation: Type} (n: nADICO People Action Situation ) (e: Event People Action Situation) := ¬ isFollowed n e
+def nADICO.isViolated {People Action Situation: Type} (n: nADICO People Action Situation ) (e: Event People Action Situation) := ¬ n.isFollowed e
 
 
 -- Two statements are equivalent under satisfaction when they satisfy all and only the same events.
-def nADICO.equivSatisfied  {People Action Situation: Type}  (n1 n2: nADICO People Action Situation)  := ∀ (e: Event People Action Situation ), n1.isSatisfied e ↔ n2.isSatisfied e
+def nADICO.equivSatisfied  {People Action Situation: Type}  (n1 n2: nADICO People Action Situation)  :=
+  ∀ (e: Event People Action Situation ), n1.isSatisfied e ↔ n2.isSatisfied e
 
 -- Two statements are equivalent under following when they are followed for all and only the same events.
-def nADICO.equivFollowed  {People Action Situation: Type}  (n1 n2: nADICO People Action Situation)  := ∀ (e: Event People Action Situation ), n1.isFollowed  e ↔ n2.isFollowed e
+def nADICO.equivFollowed  {People Action Situation: Type}  (n1 n2: nADICO People Action Situation)  :=
+  ∀ (e: Event People Action Situation ), n1.isFollowed  e ↔ n2.isFollowed e
 
-def nADICO.equivViolated  {People Action Situation: Type}  (n1 n2: nADICO People Action Situation)  := ∀ (e: Event People Action Situation ), n1.isViolated  e ↔ n2.isViolated e
+def nADICO.equivViolated  {People Action Situation: Type}  (n1 n2: nADICO People Action Situation)  :=
+  ∀ (e: Event People Action Situation ), n1.isViolated  e ↔ n2.isViolated e
 
 lemma nADICO.equiv_followed_imp_equiv_violated {People Action Situation: Type}  (n1 n2: nADICO People Action Situation)  (h: n1.equivFollowed n2)
   : ∀ (e: Event People Action Situation ), n1.isViolated e ↔ n2.isViolated e := by
@@ -128,11 +131,12 @@ lemma nADICO.equiv_followed_imp_equiv_violated {People Action Situation: Type}  
 
 lemma nADICO.equiv_followed_imp_equiv_satisfied {People Action Situation: Type}  (n1 n2: nADICO People Action Situation)  (h: n1.equivFollowed n2) : n1.equivSatisfied n2 := by
   intro e
-  have h1 := h e
+  have h_e := h e
   constructor
   · intro eSat
-    simp_all [isFollowed, isSatisfied, nADICOData.isSatisfied ]
-    sorry -- Think I need to use cases or induction on n1.\
+
+
+
   · sorry
 
 
@@ -154,3 +158,76 @@ lemma nADICO.orelse_and_distrib2 {People Action Situation: Type}  (s1 s2 s3: nAD
 
 lemma nADICO.orelse_and_distrib3 {People Action Situation: Type}  (s1 s2 s3 s4: nADICO People Action Situation)  :  ((s1 -O s2) & (s3 -O s4)).equivFollowed ((s1 & s3) -O (s3 & s4))  := by
   simp_all [equivFollowed, isFollowed]
+
+lemma orelse_assoc  {People Action Situation: Type}  (s1 s2 s3:   nADICO People Action Situation) :
+  ((s1 -O s2) -O s3).equivFollowed  (s1 -O (s2 -O s3))  := by
+  simp [equivFollowed, isFollowed]
+
+
+---
+-- Borneo Example
+
+inductive  BPerson  where
+| farmer
+| govWorker
+open BPerson
+
+inductive  BAction where
+-- Farmers
+| overhavest
+| plantDurian
+| leaveForrest
+| plantPalmOil
+
+-- Gov Workers
+| giveCarbonCredit
+open BAction
+
+inductive  BSituation where
+| everywhereAlways
+| havestSeason
+| drought
+| flooding
+| durianYield (percentChange: Float) -- negative unit interval for decrease positive for increase
+| landDegredation
+| increasedIncome
+| event (e: Event BPerson BAction BSituation)
+
+open BSituation
+open Deontic
+def BorneoData := nADICData BPerson BAction BSituation
+def Borneo := nADICO BPerson BAction BSituation
+def BorneoEvent := Event BPerson BAction BSituation
+
+def decreasingThreshold : Float := -0.2
+
+def isFarmer (p: BPerson) := p = farmer
+def isGovWorker  (p: BPerson) := p = govWorker
+
+def forrestEvent : BorneoEvent := {
+  person:= farmer,
+  action:= leaveForrest,
+  situation:= everywhereAlways
+}
+
+-- If there are decreasing durian yeilds, a farmer may plant palm oil
+def palmOilStrategy : BorneoData := {
+  A  := isFarmer,
+  I (a: BAction) := a = plantPalmOil,
+  C (s: BSituation) :  Prop := ∃ (f: Float), s = durianYield f  ∧ f ≤ decreasingThreshold
+  D := none  -- It's not a norm, but a strategy
+}
+
+
+-- If your neighbor plants palm oil, your land becomes degraded, and you might decide to plant palm oil
+
+-- A gov worker must gives carbon credit for leaving forrest stable.
+def govCarbonCredit : BorneoData := {
+  A  := isGovWorker,
+  I (a: BAction) := a = giveCarbonCredit,
+  C (s: BSituation) :  Prop := s = event forrestEvent
+  D := must
+}
+
+
+-- Yeild for given farmer increases if all neighbors are planting durian or leave forrest. (less)
