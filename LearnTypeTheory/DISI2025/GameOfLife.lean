@@ -20,6 +20,16 @@ namespace Comonad
 @[simp] def extend {W : Type u → Type u} [c : Comonad W]
     {α β : Type u} (f : W α → β) (x : W α) : W β :=
   Functor.map f (Comonad.duplicate x)
+
+structure ComonadMorphism (W V : Type u → Type u)
+  [Comonad W] [Comonad V]  where
+  m             {α : Type u}  :  W α → V α
+  map_extract     : ∀ {α} (x : W α),
+      Comonad.extract (m x) = Comonad.extract x
+  map_duplicate   : ∀ {α} (x : W α),
+      Comonad.duplicate (m x) =
+        Functor.map m (m x)
+
 end Comonad
 
 instance : Comonad Id where
@@ -73,7 +83,6 @@ open Comonad
 abbrev Board : Type := Store Point State
 
 
--- Is this a coalgebra?
 def neighbourhood : Point → List Point
   | (x,y) => [ (x-1,y-1), (x,y-1), (x+1,y-1),
                (x-1,y  ),           (x+1,y  ),
@@ -91,6 +100,36 @@ open State
 def nextCell (b : Board) : State :=
   let neighbours : List Point := (neighbourhood b.focus)
   let neighboursState : List State := neighbours.map (fun (p) => b.peek p)
+  let liveCount :ℕ  := neighboursState.count alive
+  match extract b with
+  | State.alive => if liveCount = 2 || liveCount = 3 then dead else alive
+  | State.dead  => if liveCount = 3 then alive else dead
+
+
+-- New version
+
+
+abbrev NeighbourhoodBoard := Store Point (List Board)
+
+-- This is an F-coalgebra
+def neighbourhoodBoard (b: Board ) : NeighbourhoodBoard :=
+  {
+    peek (p: Point) :=
+      let x := p.1
+      let y := p.2
+      let boards : List Board :=
+      [  (x-1,y-1), (x,y-1), (x+1,y-1),
+          (x-1,y  ),           (x+1,y  ),
+          (x-1,y+1), (x,y+1), (x+1,y+1) ].map
+        (fun p => {b with focus := p})
+      boards,
+    focus := b.focus
+  }
+
+-- The coalgebraic version
+def nextCell_ (b : Board) : State :=
+  let neighbours : List Board := (neighbourhoodBoard b).peek b.focus
+  let neighboursState : List State  := neighbours.map (fun (b) => b.peek b.focus)
   let liveCount :ℕ  := neighboursState.count alive
   match extract b with
   | State.alive => if liveCount = 2 || liveCount = 3 then dead else alive
